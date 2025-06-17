@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>포물선 대포 게임</title>
+  <style>
+    body {
+      text-align: center;
+      background: #eef;
+      font-family: sans-serif;
+    }
+    canvas {
+      border: 1px solid #000;
+      background-color: #cceeff;
+      display: block;
+      margin: 0 auto;
+    }
+    #controls {
+      margin-top: 10px;
+    }
+    #winMessage {
+      color: green;
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 포물선 대포 게임</h1>
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+  <div id="controls">
+    <label>각도 (도): <input type="number" id="angle" value="45" min="0" max="90"></label>
+    <label>힘 (1~100): <input type="number" id="power" value="50" min="1" max="100"></label>
+    <button onclick="fire()" id="fireButton">발사!</button>
+  </div>
+
+  <div id="winMessage"></div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const cannon = { x: 50, y: canvas.height - 50 };
+    const gravity = 0.4;
+
+    let projectile = null;
+    let trail = [];
+    let score = 0;
+    let target = createTarget();
+    let gameWon = false;
+
+    function createTarget() {
+      const x = Math.random() * (canvas.width - 200) + 200;
+      return { x, y: canvas.height - 60, width: 30, height: 30 };
+    }
+
+    function fire() {
+      if (gameWon) return;
+
+      const angleDeg = parseFloat(document.getElementById('angle').value);
+      const power = parseFloat(document.getElementById('power').value);
+      const angleRad = angleDeg * Math.PI / 180;
+
+      projectile = {
+        x: cannon.x,
+        y: cannon.y,
+        vx: Math.cos(angleRad) * power / 2,
+        vy: -Math.sin(angleRad) * power / 2,
+        radius: 5
+      };
+
+      trail = [];
+    }
+
+    function update() {
+      if (projectile && !gameWon) {
+        trail.push({ x: projectile.x, y: projectile.y });
+
+        projectile.x += projectile.vx;
+        projectile.vy += gravity;
+        projectile.y += projectile.vy;
+
+        // 명중 체크
+        if (
+          projectile.x > target.x &&
+          projectile.x < target.x + target.width &&
+          projectile.y > target.y &&
+          projectile.y < target.y + target.height
+        ) {
+          score++;
+          projectile = null;
+          trail = [];
+
+          if (score >= 10) {
+            document.getElementById('winMessage').innerText = '🎉 승리! 10점을 달성했습니다!';
+            gameWon = true;
+          } else {
+            target = createTarget(); // 다음 목표물 생성
+          }
+        }
+
+        // 바닥에 떨어짐
+        if (projectile && projectile.y > canvas.height) {
+          projectile = null;
+          trail = [];
+        }
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 대포
+      ctx.fillStyle = 'black';
+      ctx.fillRect(cannon.x - 10, cannon.y - 10, 20, 20);
+
+      // 궤적
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.5)';
+      trail.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // 포탄
+      if (projectile) {
+        ctx.beginPath();
+        ctx.arc(projectile.x, projectile.y, projectile.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+      }
+
+      // 목표물
+      if (!gameWon) {
+        ctx.fillStyle = 'green';
+        ctx.fillRect(target.x, target.y, target.width, target.height);
+      }
+
+      // 점수 표시
+      ctx.fillStyle = 'black';
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`점수: ${score} / 10`, 10, 20);
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+  </script>
+</body>
+</html>
